@@ -50,30 +50,34 @@
         delay: 30
         timeout: 300
 
-    # NFS checks need to run as the actual user, not root
+    # NFS checks - only for servers in nfs_hosts group
     - name: Check if NFS mount directory exists
       stat:
         path: /home/{{ ansible_user }}/mnt/synology/Media
       become: no
       register: nfs_mount
+      when: inventory_hostname in groups['nfs_hosts']
       
     - name: Verify NFS is accessible by checking Anime folder
       stat:
         path: /home/{{ ansible_user }}/mnt/synology/Media/Anime
       become: no
       register: anime_folder
+      when: inventory_hostname in groups['nfs_hosts']
       
     - name: Verify NFS is accessible by checking Movies folder
       stat:
         path: /home/{{ ansible_user }}/mnt/synology/Media/Movies
       become: no
       register: movies_folder
+      when: inventory_hostname in groups['nfs_hosts']
       
     - name: Verify NFS is accessible by checking TVShow folder
       stat:
         path: /home/{{ ansible_user }}/mnt/synology/Media/TVShow
       become: no
       register: tvshow_folder
+      when: inventory_hostname in groups['nfs_hosts']
       
     - name: Check if we can list contents of Anime folder
       find:
@@ -82,6 +86,7 @@
       become: no
       register: anime_contents
       failed_when: anime_contents.matched == 0
+      when: inventory_hostname in groups['nfs_hosts']
       
     - name: Display NFS verification results
       debug:
@@ -91,11 +96,14 @@
           - "Movies folder accessible: {{ movies_folder.stat.exists }}"
           - "TVShow folder accessible: {{ tvshow_folder.stat.exists }}"
           - "Anime contents found: {{ anime_contents.matched }} items"
+      when: inventory_hostname in groups['nfs_hosts']
           
     - name: Fail if NFS is not properly mounted
       fail:
         msg: "NFS mount is not accessible on {{ inventory_hostname }}"
-      when: not (anime_folder.stat.exists and movies_folder.stat.exists and tvshow_folder.stat.exists)
+      when: 
+        - inventory_hostname in groups['nfs_hosts']
+        - not (anime_folder.stat.exists and movies_folder.stat.exists and tvshow_folder.stat.exists)
       
     - name: Start all Docker containers
       shell: docker start $(docker ps -aq)
