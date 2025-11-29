@@ -109,22 +109,32 @@
       shell: docker start $(docker ps -aq)
       register: docker_start
       ignore_errors: yes
+      when: running_containers.rc == 0 and running_containers.stdout != ""
       
     - name: Wait for containers to start
       pause:
         seconds: 10
+      when: running_containers.rc == 0 and running_containers.stdout != ""
         
     - name: Verify Docker containers are running
       shell: docker ps --format '{{"{{"}} .Names {{"}}"}}'
       register: containers_after_start
       changed_when: false
+      when: running_containers.rc == 0 and running_containers.stdout != ""
       
     - name: Display running containers
       debug:
         msg: "Running containers on {{ inventory_hostname }}: {{ containers_after_start.stdout_lines }}"
+      when: running_containers.rc == 0 and running_containers.stdout != ""
         
     - name: Check if all containers started successfully
       assert:
         that: containers_after_start.stdout_lines | length > 0
         fail_msg: "No Docker containers are running on {{ inventory_hostname }}"
         success_msg: "{{ containers_after_start.stdout_lines | length }} containers running on {{ inventory_hostname }}"
+      when: running_containers.rc == 0 and running_containers.stdout != ""
+      
+    - name: Summary for servers without containers
+      debug:
+        msg: "No Docker containers were running on {{ inventory_hostname }} before maintenance"
+      when: running_containers.stdout == ""
