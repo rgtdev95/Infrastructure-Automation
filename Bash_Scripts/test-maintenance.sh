@@ -1,6 +1,6 @@
 #!/bin/bash
 
-LOG_FILE="/var/log/control-machine-maintenance.log"
+LOG_FILE="$HOME/logs/control-machine-maintenance.log"
 
 log() {
     echo "[$(date '+%Y-%m-%d %H:%M:%S')] $1" | tee -a "$LOG_FILE"

@@ -3,7 +3,7 @@
 # Maintenance script for control machine
 # Performs system updates and reboot
 
-LOG_FILE="/var/log/control-machine-maintenance.log"
+LOG_FILE="$HOME/logs/control-machine-maintenance.log"
 
 # Function to log with timestamp
 log() {
