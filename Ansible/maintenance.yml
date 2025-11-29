@@ -2,7 +2,7 @@
 - name: Weekly Homelab Maintenance
   hosts: all_servers
   become: yes
-  serial: 1  # Process one server at a time to avoid downtime
+  serial: 1
   
   tasks:
     - name: Update apt cache
@@ -23,14 +23,21 @@
       when: apt_upgrade.changed
     
     - name: Get list of running containers
-      shell: docker ps --format '{{.Names}}'
+      shell: docker ps --format '{{"{{"}} .Names {{"}}"}}'
       register: running_containers
       ignore_errors: yes
       changed_when: false
       
+    - name: Show running containers before stop
+      debug:
+        msg: "Running containers: {{ running_containers.stdout_lines }}"
+      when: running_containers.rc == 0
+    
     - name: Stop all Docker containers
       shell: docker stop $(docker ps -q)
-      when: running_containers.stdout_lines | length > 0
+      when: 
+        - running_containers.rc == 0
+        - running_containers.stdout != ""
       ignore_errors: yes
       
     - name: Reboot the server
@@ -42,31 +49,37 @@
       wait_for_connection:
         delay: 30
         timeout: 300
-        
+
+    # NFS checks need to run as the actual user, not root
     - name: Check if NFS mount directory exists
       stat:
         path: /home/{{ ansible_user }}/mnt/synology/Media
+      become: no
       register: nfs_mount
       
     - name: Verify NFS is accessible by checking Anime folder
       stat:
         path: /home/{{ ansible_user }}/mnt/synology/Media/Anime
+      become: no
       register: anime_folder
       
     - name: Verify NFS is accessible by checking Movies folder
       stat:
         path: /home/{{ ansible_user }}/mnt/synology/Media/Movies
+      become: no
       register: movies_folder
       
     - name: Verify NFS is accessible by checking TVShow folder
       stat:
         path: /home/{{ ansible_user }}/mnt/synology/Media/TVShow
+      become: no
       register: tvshow_folder
       
     - name: Check if we can list contents of Anime folder
       find:
         paths: /home/{{ ansible_user }}/mnt/synology/Media/Anime
         file_type: directory
+      become: no
       register: anime_contents
       failed_when: anime_contents.matched == 0
       
@@ -94,7 +107,7 @@
         seconds: 10
         
     - name: Verify Docker containers are running
-      shell: docker ps --format '{{.Names}}'
+      shell: docker ps --format '{{"{{"}} .Names {{"}}"}}'
       register: containers_after_start
       changed_when: false
       
