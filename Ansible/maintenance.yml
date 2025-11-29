@@ -1,0 +1,140 @@
+---
+- name: Weekly Homelab Maintenance
+  hosts: all_servers
+  become: yes
+  serial: 1
+  
+  tasks:
+    - name: Update apt cache
+      apt:
+        update_cache: yes
+        cache_valid_time: 3600
+      
+    - name: Upgrade all packages
+      apt:
+        upgrade: dist
+        autoremove: yes
+        autoclean: yes
+      register: apt_upgrade
+      
+    - name: Show upgrade results
+      debug:
+        msg: "Packages upgraded on {{ inventory_hostname }}"
+      when: apt_upgrade.changed
+    
+    - name: Get list of running containers
+      shell: docker ps --format '{{"{{"}} .Names {{"}}"}}'
+      register: running_containers
+      ignore_errors: yes
+      changed_when: false
+      
+    - name: Show running containers before stop
+      debug:
+        msg: "Running containers: {{ running_containers.stdout_lines }}"
+      when: running_containers.rc == 0
+    
+    - name: Stop all Docker containers
+      shell: docker stop $(docker ps -q)
+      when: 
+        - running_containers.rc == 0
+        - running_containers.stdout != ""
+      ignore_errors: yes
+      
+    - name: Reboot the server
+      reboot:
+        reboot_timeout: 600
+        post_reboot_delay: 30
+        
+    - name: Wait for server to come back online
+      wait_for_connection:
+        delay: 30
+        timeout: 300
+
+    # NFS checks - only for servers in nfs_hosts group
+    - name: Check if NFS mount directory exists
+      stat:
+        path: /home/{{ ansible_user }}/mnt/synology/Media
+      become: no
+      register: nfs_mount
+      when: inventory_hostname in groups['nfs_hosts']
+      
+    - name: Verify NFS is accessible by checking Anime folder
+      stat:
+        path: /home/{{ ansible_user }}/mnt/synology/Media/Anime
+      become: no
+      register: anime_folder
+      when: inventory_hostname in groups['nfs_hosts']
+      
+    - name: Verify NFS is accessible by checking Movies folder
+      stat:
+        path: /home/{{ ansible_user }}/mnt/synology/Media/Movies
+      become: no
+      register: movies_folder
+      when: inventory_hostname in groups['nfs_hosts']
+      
+    - name: Verify NFS is accessible by checking TVShow folder
+      stat:
+        path: /home/{{ ansible_user }}/mnt/synology/Media/TVShow
+      become: no
+      register: tvshow_folder
+      when: inventory_hostname in groups['nfs_hosts']
+      
+    - name: Check if we can list contents of Anime folder
+      find:
+        paths: /home/{{ ansible_user }}/mnt/synology/Media/Anime
+        file_type: directory
+      become: no
+      register: anime_contents
+      failed_when: anime_contents.matched == 0
+      when: inventory_hostname in groups['nfs_hosts']
+      
+    - name: Display NFS verification results
+      debug:
+        msg: 
+          - "NFS Mount Status for {{ inventory_hostname }}:"
+          - "Anime folder accessible: {{ anime_folder.stat.exists }}"
+          - "Movies folder accessible: {{ movies_folder.stat.exists }}"
+          - "TVShow folder accessible: {{ tvshow_folder.stat.exists }}"
+          - "Anime contents found: {{ anime_contents.matched }} items"
+      when: inventory_hostname in groups['nfs_hosts']
+          
+    - name: Fail if NFS is not properly mounted
+      fail:
+        msg: "NFS mount is not accessible on {{ inventory_hostname }}"
+      when: 
+        - inventory_hostname in groups['nfs_hosts']
+        - not (anime_folder.stat.exists and movies_folder.stat.exists and tvshow_folder.stat.exists)
+      
+    - name: Start all Docker containers
+      shell: docker start $(docker ps -aq)
+      register: docker_start
+      ignore_errors: yes
+      when: running_containers.rc == 0 and running_containers.stdout != ""
+      
+    - name: Wait for containers to start
+      pause:
+        seconds: 10
+      when: running_containers.rc == 0 and running_containers.stdout != ""
+        
+    - name: Verify Docker containers are running
+      shell: docker ps --format '{{"{{"}} .Names {{"}}"}}'
+      register: containers_after_start
+      changed_when: false
+      when: running_containers.rc == 0 and running_containers.stdout != ""
+      
+    - name: Display running containers
+      debug:
+        msg: "Running containers on {{ inventory_hostname }}: {{ containers_after_start.stdout_lines }}"
+      when: running_containers.rc == 0 and running_containers.stdout != ""
+        
+    - name: Check if all containers started successfully
+      assert:
+        that: containers_after_start.stdout_lines | length > 0
+        fail_msg: "No Docker containers are running on {{ inventory_hostname }}"
+        success_msg: "{{ containers_after_start.stdout_lines | length }} containers running on {{ inventory_hostname }}"
+      when: running_containers.rc == 0 and running_containers.stdout != ""
+      
+    - name: Summary for servers without containers
+      debug:
+        msg: "No Docker containers were running on {{ inventory_hostname }} before maintenance"
+      when: running_containers.stdout == ""
