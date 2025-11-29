@@ -1,225 +1,50 @@
-Perfect! Let's create a bash script for the control machine's maintenance and schedule it with cron.
-
-## Step 1: Create the Maintenance Script
+Here's a simplified README for the control machine maintenance:
 
 ```bash
-nano ~/maintenance-control-machine.sh
+nano ~/Infrastructure-Automation/Bash_Scripts/README.md
 ```
 
 Paste this:
 
-```bash
-#!/bin/bash
-
-# Maintenance script for control machine
-# Performs system updates and reboot
-
-LOG_FILE="/var/log/control-machine-maintenance.log"
-
-# Function to log with timestamp
-log() {
-    echo "[$(date '+%Y-%m-%d %H:%M:%S')] $1" | tee -a "$LOG_FILE"
-}
-
-log "========================================="
-log "Starting Control Machine Maintenance"
-log "========================================="
-
-# Update package list
-log "Updating package list..."
-sudo apt update 2>&1 | tee -a "$LOG_FILE"
-
-# Upgrade packages
-log "Upgrading packages..."
-sudo apt upgrade -y 2>&1 | tee -a "$LOG_FILE"
-
-# Auto remove unused packages
-log "Removing unused packages..."
-sudo apt autoremove -y 2>&1 | tee -a "$LOG_FILE"
-
-# Clean up
-log "Cleaning up package cache..."
-sudo apt autoclean -y 2>&1 | tee -a "$LOG_FILE"
-
-log "Updates completed successfully"
-log "System will reboot in 60 seconds..."
-log "========================================="
-
-# Reboot after 60 seconds
-sleep 60
-sudo reboot
-```
-
-Save and exit (Ctrl+X, Y, Enter).
-
-## Step 2: Make the Script Executable
-
-```bash
-chmod +x ~/maintenance-control-machine.sh
-```
-
-## Step 3: Test the Script (Without Reboot)
-
-First, let's test without the reboot. Create a test version:
-
-```bash
-nano ~/test-maintenance.sh
-```
-
-Paste (same as above but without the reboot):
-
-```bash
-#!/bin/bash
-
-LOG_FILE="/var/log/control-machine-maintenance.log"
-
-log() {
-    echo "[$(date '+%Y-%m-%d %H:%M:%S')] $1" | tee -a "$LOG_FILE"
-}
-
-log "========================================="
-log "Testing Control Machine Maintenance"
-log "========================================="
-
-log "Updating package list..."
-sudo apt update 2>&1 | tee -a "$LOG_FILE"
-
-log "Checking for upgrades (dry run)..."
-sudo apt list --upgradable 2>&1 | tee -a "$LOG_FILE"
-
-log "Test completed (no actual upgrade or reboot)"
-log "========================================="
-```
-
-Make it executable and run:
-
-```bash
-chmod +x ~/test-maintenance.sh
-./test-maintenance.sh
-```
-
-## Step 4: Set Up Cron Job
-
-Open crontab:
-
-```bash
-crontab -e
-```
-
-If asked, choose your preferred editor (nano is easiest).
-
-Add this line at the end (runs every Sunday at 4:00 AM Manila time):
-
-```bash
-# Control machine weekly maintenance - Sunday 4:00 AM
-0 4 * * 0 /home/scriptadmin/maintenance-control-machine.sh
-```
-
-**Note:** We schedule it at 4 AM, which is 1 hour after the other servers finish (they run at 3 AM).
-
-Save and exit (Ctrl+X, Y, Enter in nano).
-
-## Step 5: Verify Cron Job
-
-```bash
-crontab -l
-```
-
-You should see your cron job listed.
-
-## Step 6: Check Cron Logs
-
-Cron logs to syslog. To see when it runs:
-
-```bash
-sudo grep CRON /var/log/syslog | tail -20
-```
-
-Or check maintenance logs:
-
-```bash
-sudo tail -f /var/log/control-machine-maintenance.log
-```
-
----
-
-## Cron Schedule Examples
-
-If you want different timing, here are examples:
-
-```bash
-# Every Sunday at 4:00 AM
-0 4 * * 0 /home/scriptadmin/maintenance-control-machine.sh
-
-# Every Saturday at 2:00 AM
-0 2 * * 6 /home/scriptadmin/maintenance-control-machine.sh
-
-# Every day at 3:00 AM
-0 3 * * * /home/scriptadmin/maintenance-control-machine.sh
-
-# First day of every month at 3:00 AM
-0 3 1 * * /home/scriptadmin/maintenance-control-machine.sh
-
-# Every Monday at 1:00 AM
-0 1 * * 1 /home/scriptadmin/maintenance-control-machine.sh
-```
-
-**Cron format:**
-```
-* * * * * command
-│ │ │ │ │
-│ │ │ │ └─── Day of week (0-7, 0 and 7 = Sunday)
-│ │ │ └───── Month (1-12)
-│ │ └─────── Day of month (1-31)
-│ └───────── Hour (0-23)
-└─────────── Minute (0-59)
-```
-
----
-
-## Test Manually
-
-To test the script without waiting for cron:
-
-```bash
-~/maintenance-control-machine.sh
-```
-
-**Warning:** This will actually reboot the machine after 60 seconds!
-
----
-
-## Update README with Control Machine Maintenance
-
-```bash
-nano ~/Infrastructure-Automation/Ansible/README.md
-```
-
-Add this section before "Troubleshooting":
-
 ```markdown
+# Control Machine Maintenance Scripts
+
+Automated maintenance scripts for the Ansible control machine.
+
 ---
 
-## Control Machine Maintenance
+## Overview
 
-The control machine itself also needs regular maintenance.
+- **Location**: `/home/scriptadmin/Infrastructure-Automation/Bash_Scripts/`
+- **Logs**: `/home/scriptadmin/logs/control-machine-maintenance.log`
+- **Schedule**: Every Sunday at 4:00 AM (Asia/Manila timezone)
 
-### Bash Script Setup
+---
 
-**1. The maintenance script is located at:**
+## Scripts
+
+### 1. `maintenance-control-machine.sh`
+Main maintenance script that performs:
+- `apt update` - Update package lists
+- `apt upgrade -y` - Upgrade all packages
+- `apt autoremove -y` - Remove unused packages
+- `apt autoclean -y` - Clean package cache
+- Reboot system after 60 seconds
+
+### 2. `test-maintenance.sh`
+Test version that performs dry-run without actual upgrade or reboot.
+
+---
+
+## Setup (Already Configured)
+
+### Scripts are executable:
 ```bash
-~/maintenance-control-machine.sh
+chmod +x maintenance-control-machine.sh
+chmod +x test-maintenance.sh
 ```
 
-**2. What it does:**
-- Updates package list (`apt update`)
-- Upgrades all packages (`apt upgrade -y`)
-- Removes unused packages (`apt autoremove -y`)
-- Cleans package cache (`apt autoclean -y`)
-- Reboots the system after 60 seconds
-- Logs everything to `/var/log/control-machine-maintenance.log`
-
-**3. Scheduled via cron:**
+### Cron job is configured:
 ```bash
 # View cron jobs
 crontab -l
@@ -228,61 +53,278 @@ crontab -l
 crontab -e
 ```
 
-**Current schedule:** Every Sunday at 4:00 AM (1 hour after other servers)
-
+**Current cron configuration:**
 ```
-0 4 * * 0 /home/scriptadmin/maintenance-control-machine.sh
+# Control machine weekly maintenance - Every Sunday at 4:00 AM Manila Time
+0 4 * * 0 /home/scriptadmin/Infrastructure-Automation/Bash_Scripts/maintenance-control-machine.sh
 ```
 
-### Manual Execution
+---
 
-**Test without reboot:**
+## Usage
+
+### Run Test (No Reboot)
 ```bash
-~/test-maintenance.sh
+cd ~/Infrastructure-Automation/Bash_Scripts
+./test-maintenance.sh
 ```
 
-**Run full maintenance (will reboot!):**
+### Run Full Maintenance (Will Reboot!)
 ```bash
-~/maintenance-control-machine.sh
+./maintenance-control-machine.sh
 ```
+**Warning:** System will reboot after 60 seconds!
 
 ### View Logs
-
 ```bash
-# View maintenance log
-sudo tail -f /var/log/control-machine-maintenance.log
+# View entire log
+cat /home/scriptadmin/logs/control-machine-maintenance.log
 
-# View cron execution log
+# View last 20 lines
+tail -20 /home/scriptadmin/logs/control-machine-maintenance.log
+
+# Watch in real-time
+tail -f /home/scriptadmin/logs/control-machine-maintenance.log
+```
+
+### Check Cron Execution
+```bash
+# Check if cron ran the script
+sudo grep CRON /var/log/syslog | grep maintenance
+
+# Check recent cron activity
 sudo grep CRON /var/log/syslog | tail -20
 ```
 
-### Change Schedule
+---
 
+## Cron Schedule Configuration
+
+### Edit Schedule
 ```bash
 crontab -e
 ```
 
-Modify the timing as needed. See cron format examples in the script comments.
+### Common Schedules
 
----
+| Schedule | Cron Expression | Description |
+|----------|----------------|-------------|
+| Every Sunday 4 AM | `0 4 * * 0` | Current setting |
+| Every Saturday 2 AM | `0 2 * * 6` | Saturday maintenance |
+| Daily 3 AM | `0 3 * * *` | Every day |
+| First of month 3 AM | `0 3 1 * *` | Monthly |
+| Every Monday 1 AM | `0 1 * * 1` | Weekly Monday |
+
+### Cron Format
+```
+* * * * * command
+│ │ │ │ │
+│ │ │ │ └─── Day of week (0-7, Sunday = 0 or 7)
+│ │ │ └───── Month (1-12)
+│ │ └─────── Day of month (1-31)
+│ └───────── Hour (0-23)
+└─────────── Minute (0-59)
 ```
 
-Save and commit:
+### After Changing Schedule
+```bash
+# Verify changes
+crontab -l
+
+# Check cron service
+sudo systemctl status cron
+```
+
+---
+
+## Timezone
+
+System timezone: **Asia/Manila (PHT, UTC+8)**
+
+### Check Timezone
+```bash
+timedatectl
+```
+
+### Change Timezone (if needed)
+```bash
+sudo timedatectl set-timezone Asia/Manila
+```
+
+All cron jobs run in the system's local timezone.
+
+---
+
+## Maintenance Schedule Overview
+
+| Time | Server | Method |
+|------|--------|--------|
+| 3:00 AM Sunday | server1 & server2 | Ansible (systemd timer) |
+| 4:00 AM Sunday | control-machine | Bash script (cron) |
+
+Control machine maintenance runs 1 hour after other servers to avoid conflicts.
+
+---
+
+## Troubleshooting
+
+### Cron Not Running
+
+**Check cron service:**
+```bash
+sudo systemctl status cron
+```
+
+**Start/enable cron:**
+```bash
+sudo systemctl start cron
+sudo systemctl enable cron
+```
+
+### Script Errors
+
+**Test manually:**
+```bash
+./test-maintenance.sh
+```
+
+**Check script permissions:**
+```bash
+ls -l maintenance-control-machine.sh
+# Should show: -rwxr-xr-x
+```
+
+**Fix permissions if needed:**
+```bash
+chmod +x maintenance-control-machine.sh
+```
+
+### Check Logs
+
+**Maintenance log:**
+```bash
+cat /home/scriptadmin/logs/control-machine-maintenance.log
+```
+
+**System log:**
+```bash
+sudo journalctl -u cron -n 50
+```
+
+**Cron execution log:**
+```bash
+sudo grep "maintenance-control-machine" /var/log/syslog
+```
+
+### Sudo Password Required
+
+The script uses `sudo` commands. Make sure passwordless sudo is configured:
 
 ```bash
-cd ~/Infrastructure-Automation/Ansible
-git add README.md
-git commit -m "Add control machine maintenance documentation"
+sudo visudo
+```
+
+Verify this line exists:
+```
+scriptadmin ALL=(ALL) NOPASSWD: ALL
+```
+
+---
+
+## Testing Cron Job
+
+To test without waiting for Sunday:
+
+### 1. Edit crontab
+```bash
+crontab -e
+```
+
+### 2. Set to run in 2 minutes
+Example: If current time is 10:45, set to 10:47:
+```bash
+47 10 * * * /home/scriptadmin/Infrastructure-Automation/Bash_Scripts/maintenance-control-machine.sh
+```
+
+### 3. Watch the logs
+```bash
+tail -f /home/scriptadmin/logs/control-machine-maintenance.log
+```
+
+### 4. Restore original schedule
+```bash
+crontab -e
+```
+Change back to:
+```bash
+0 4 * * 0 /home/scriptadmin/Infrastructure-Automation/Bash_Scripts/maintenance-control-machine.sh
+```
+
+**Warning:** Test will actually reboot the machine!
+
+---
+
+## Quick Reference
+
+```bash
+# View cron schedule
+crontab -l
+
+# Edit cron schedule  
+crontab -e
+
+# Test script (no reboot)
+./test-maintenance.sh
+
+# View logs
+tail -20 /home/scriptadmin/logs/control-machine-maintenance.log
+
+# Check cron activity
+sudo grep CRON /var/log/syslog | tail -20
+
+# Check timezone
+timedatectl
+```
+
+---
+
+## Security Notes
+
+- Script runs with user privileges, uses `sudo` for system commands
+- Passwordless sudo configured for automation
+- Logs stored in user's home directory
+- 60-second delay before reboot allows for manual cancellation if needed
+
+---
+
+## Last Updated
+
+November 29, 2024
+```
+
+Save and exit (Ctrl+X, Y, Enter).
+
+---
+
+## Now Commit to Git
+
+```bash
+cd ~/Infrastructure-Automation
+git add Bash_Scripts/README.md
+git add Bash_Scripts/maintenance-control-machine.sh
+git add Bash_Scripts/test-maintenance.sh
+git commit -m "Add control machine maintenance scripts and documentation"
 git push
 ```
 
 ---
 
-## Summary of Schedule
+This simplified README includes:
+✅ Overview and file locations
+✅ What each script does
+✅ How to use them
+✅ Complete cron configuration with examples
+✅ Troubleshooting guide
+✅ Quick reference commands
 
-- **3:00 AM Sunday** - Server1 and Server2 maintenance (via Ansible)
-- **4:00 AM Sunday** - Control machine maintenance (via cron)
-
-This gives the control machine time to finish managing the other servers before it reboots itself!
-
-Want to test the script now? (I recommend testing `test-maintenance.sh` first!)
+All in one easy-to-follow document! 🎯
