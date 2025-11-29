@@ -2,3 +2,4 @@
 
 ## Added ansible maintenance script
 
+## Added bash script for control-machine weekly upgrade/restarts
