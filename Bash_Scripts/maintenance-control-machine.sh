@@ -3,7 +3,8 @@
 # Maintenance script for control machine
 # Performs system updates and reboot
 
-LOG_FILE="$HOME/logs/control-machine-maintenance.log"
+LOG_DIR="/home/scriptadmin/logs"
+LOG_FILE="$LOG_DIR/control-machine-maintenance.log"
 
 # Function to log with timestamp
 log() {
